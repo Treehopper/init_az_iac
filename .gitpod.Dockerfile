@@ -1,12 +1,12 @@
 FROM gitpod/workspace-full
 
-COPY --from=ghcr.io/treehopper/the-kraken:latest /usr/local/bin/terraform /usr/local/bin/
+COPY --from=hashicorp/terraform:light /bin/terraform /bin/
 
-#RUN DEBIAN_FRONTEND=noninteractive \
-#    apt-get -qq update \
-#    && apt-get -qq install -y python3; \
-#    apt-get -qq clean;
+RUN sudo DEBIAN_FRONTEND=noninteractive \
+    apt-get -qq update \
+    && sudo apt-get -qq install -y python3; \
+    sudo apt-get -qq clean;
 
 # Azure CLI
-#RUN curl -fsSL https://aka.ms/InstallAzureCLIDeb | bash - \
-#    && az extension add --system --yes --name azure-devops
+RUN curl -fsSL https://aka.ms/InstallAzureCLIDeb | sudo bash - \
+    && sudo az extension add --system --yes --name azure-devops
