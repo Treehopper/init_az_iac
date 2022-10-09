@@ -7,8 +7,18 @@ org="foobar"
 source set_cred.sh
 ```
 
-# TODO: with AZ CLI
-* Create Bootstrap Storage Account for Terraform Backend 
+# Boostrap Azure Backend for Terraform
+```bash
+docker run -it --rm mcr.microsoft.com/azure-cli
+az login
+az group create -l westus -n TfBootstrapGroup
+az storage account create -n tfboostrapsa -g TfBootstrapGroup -l westus --sku Standard_LRS
+
+```
+Clean up:
+```bash
+az group delete -n TfBootstrapGroup
+```
 
 # TODO: with Terraform
 * Create Service Principle for Pipeline
