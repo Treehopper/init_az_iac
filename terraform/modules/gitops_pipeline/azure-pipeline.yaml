@@ -1,0 +1,111 @@
+name: 'devops'
+
+trigger:
+  tags:
+    include:
+      - '*'
+  branches:
+    include:
+      - master
+  paths:
+    include:
+      - terraform/*
+      - azure-pipelines.yml
+
+resources:
+  repositories:
+    - repository: self
+      type: git
+      name: devops
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: preparation
+    displayName: preparation stage
+    jobs:
+      - job: checkout_default_branch
+        displayName: checkout repository
+        steps:
+          - checkout: self
+
+  - stage: infrastructure_setup
+    displayName: infrastructure setup
+    jobs:
+      - job: terraform
+        continueOnError: false
+        steps:
+          - task: TerraformInstaller@0
+            displayName: install terraform
+            inputs:
+              terraformVersion: 1.0.10
+
+          - task: TerraformCLI@0
+            displayName: 'check terraform version and warn if outdated'
+            inputs:
+              command: version
+
+          - task: TerraformCLI@0
+            displayName: 'terraform init'
+            inputs:
+              command: 'init'
+              workingDirectory: terraform
+              allowTelemetryCollection: false
+              ensureBackend: true
+
+          - task: TerraformCLI@0
+            displayName: 'terraform validate'
+            inputs:
+              command: 'validate'
+              commandOptions: '-no-color'
+              workingDirectory: terraform
+              allowTelemetryCollection: false
+
+          - task: TerraformCLI@0
+            displayName: 'terraform plan'
+            inputs:
+              command: 'plan'
+              commandOptions: '-no-color -out plan.tfplan'
+              workingDirectory: terraform
+              allowTelemetryCollection: false
+              publishPlanResults: 'terraform'
+
+          - task: TerraformCLI@0
+            displayName: 'terraform apply'
+            inputs:
+              command: 'apply'
+              commandOptions: '-auto-approve -input=false'
+              workingDirectory: terraform
+              allowTelemetryCollection: false
+
+  - stage: validation
+    displayName: validate infrastructure
+    jobs:
+      - job: waitForValidation
+        displayName: Wait for external validation
+        pool: server
+        timeoutInMinutes: 4320 # job times out in 3 days
+        steps:
+        - task: ManualValidation@0
+          timeoutInMinutes: 1440 # task times out in 1 day
+          inputs:
+            notifyUsers: |
+              test@test.com
+            instructions: 'Please validate the build configuration and resume'
+            onTimeout: 'resume'
+
+
+  - stage: infrastructure_teardown
+    displayName: infrastructure teardown
+    jobs:
+      - job: terraform
+        continueOnError: false
+        steps:
+          - task: TerraformCLI@0
+            displayName: 'terraform destroy'
+            inputs:
+              command: 'destroy'
+              commandOptions: '-auto-approve -input=false'
+              workingDirectory: terraform
+              allowTelemetryCollection: false
